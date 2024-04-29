@@ -1,0 +1,50 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+@model TrialProject.Mvc.Models.MessageWidgetModel
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title></title>
+</head>
+<body>
+    <div>
+        <div>
+            @using (Html.BeginForm("SubmitForm", "MessageWidget", FormMethod.Post, new { enctype = "multipart/form-data" }))
+            {
+                <div>
+                    <label for="Name">Title:</label>
+                    <input type="text" id="Title" name="Title">
+                </div>
+                <div>
+                    <label for="Description">Description:</label>
+                    <input type="text" id="Description" name="Description">
+                </div>
+
+                <div>
+                    <label for="Tags">Tags:</label>
+                    <input type="text" id="Tags" name="Tags">
+                </div>
+
+                <div>
+                    <label for="Category">Category:</label>
+                    <input type="text" id="Category" name="Category">
+                </div>
+
+
+                <div>
+                    <input type="file" id="ItemImage" name="ItemImage">
+                </div>
+
+
+                <button type="submit">Submit</button>
+            }
+        </div>
+    </div>
+
+  
+</body>
+</html>
