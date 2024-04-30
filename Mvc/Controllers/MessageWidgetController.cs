@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -26,13 +26,14 @@ using Telerik.Sitefinity.Libraries.Model;
 using static Telerik.Sitefinity.Security.SecurityConstants.Sets;
 using Album = Telerik.Sitefinity.Libraries.Model.Album;
 using Telerik.Sitefinity.RelatedData;
+using Telerik.Sitefinity.Lifecycle;
 
 namespace TrialProject.Mvc.Controllers
 {
     [ControllerToolboxItem(Name = "MessageWidget", Title = "Message Widget", SectionName = "MvcWidgets")]
     public class MessageWidgetController : Controller
     {
-
+        // here we create a global variable for storing the album id , that can be accessible anywhere
         Guid albumId ;
         string albumTitle;
 
@@ -43,29 +44,42 @@ namespace TrialProject.Mvc.Controllers
         }
 
 
+
+        //Main function, it handles the submission of form detail .
+
         [HttpPost]
         public ActionResult SubmitForm(MessageWidgetModel messageWidgetModel, HttpPostedFileBase ItemImage)
         {
 
 
-
+            // here we store the value of Tags
             string name = messageWidgetModel.Tags;
 
+
+            // here we store the value of Category
             string category = messageWidgetModel.Category;
 
 
 
 
-
+            // Get an instance of the DynamicModuleManager to manage dynamic content
             DynamicModuleManager dynamicModuleManager = DynamicModuleManager.GetManager();
+
+
+            // Resolve the type of the custom dynamic module named "Kanishk"
             Type kanishkType = TypeResolutionService.ResolveType("Telerik.Sitefinity.DynamicTypes.Model.DynamicModule.Kanishk");
+
+
+            // Create a new data item (content item) of the "Kanishk" dynamic module type
             DynamicContent kanishkItem = dynamicModuleManager.CreateDataItem(kanishkType);
 
 
 
-
+            // Set the "Title" field of the dynamic content item to the value of messageWidgetModel.Title
 
             kanishkItem.SetString("Title", messageWidgetModel.Title);
+
+            // Set the "Description" field of the dynamic content item to the value of messageWidgetModel.Description
             kanishkItem.SetString("Description", messageWidgetModel.Description);
 
 
@@ -76,18 +90,18 @@ namespace TrialProject.Mvc.Controllers
 
 
 
-            // Add Tags
+            // Add Tags Method
             AddTags(name);
 
             addtaxon(kanishkItem, messageWidgetModel.Tags);
 
 
-            // Add Category 
+            // Add Category Method
             addCategory(category);
             addCategoryToModule(kanishkItem, category);
 
 
-
+            // Album Method
             FindFolderById();
 
 
@@ -115,6 +129,11 @@ namespace TrialProject.Mvc.Controllers
 
 
             }
+
+
+            // publishing the item into dynamic module records
+            dynamicModuleManager.Lifecycle.Publish(kanishkItem);
+            kanishkItem.SetWorkflowStatus(dynamicModuleManager.Provider.ApplicationName, "Published");
             dynamicModuleManager.SaveChanges();
 
 
