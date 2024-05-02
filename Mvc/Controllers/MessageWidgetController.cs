@@ -1,99 +1,109 @@
+using DocumentFormat.OpenXml.Bibliography;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Mvc;
+using Telerik.Sitefinity;
 using Telerik.Sitefinity.DynamicModules;
 using Telerik.Sitefinity.DynamicModules.Model;
+using Telerik.Sitefinity.Frontend.Forms.Mvc.Models;
 using Telerik.Sitefinity.Model;
 using Telerik.Sitefinity.Modules.Libraries;
 using Telerik.Sitefinity.Mvc;
-using Telerik.Sitefinity.Utilities.TypeConverters;
-
-using TrialProject.Mvc.Models;
-using Image = Telerik.Sitefinity.Libraries.Model.Image;
-using Telerik.Sitefinity.Modules.Libraries;
-using DocumentFormat.OpenXml.Vml;
-using System.IO;
-using System.Text.RegularExpressions;
-using Telerik.Sitefinity.Workflow;
+using Telerik.Sitefinity.RelatedData;
 using Telerik.Sitefinity.Taxonomies.Model;
 using Telerik.Sitefinity.Taxonomies;
-using DocumentFormat.OpenXml.ExtendedProperties;
-using Telerik.Microsoft.Practices.EnterpriseLibrary.Common.Configuration.Manageability.Adm;
-using Telerik.Sitefinity;
+using Telerik.Sitefinity.Utilities.TypeConverters;
+using TrialProject.Mvc.Models;
 using Telerik.Sitefinity.Libraries.Model;
-using static Telerik.Sitefinity.Security.SecurityConstants.Sets;
-using Album = Telerik.Sitefinity.Libraries.Model.Album;
-using Telerik.Sitefinity.RelatedData;
-using Telerik.Sitefinity.Lifecycle;
+using System.Globalization;
+using Telerik.Sitefinity.Localization;
+using Telerik.Sitefinity.Multisite;
+using Telerik.Sitefinity.Services;
+using Telerik.Sitefinity.DynamicModules.Builder;
 
 namespace TrialProject.Mvc.Controllers
 {
-    [ControllerToolboxItem(Name = "MessageWidget", Title = "Message Widget", SectionName = "MvcWidgets")]
-    public class MessageWidgetController : Controller
+    [ControllerToolboxItem(Name = "SiteWidget", Title = "Site Widget", SectionName = "SiteForm")]
+    public class SiteFormController : Controller
     {
-        // here we create a global variable for storing the album id , that can be accessible anywhere
-        Guid albumId ;
-        string albumTitle;
+        string providerName = String.Empty;
+        Guid albumId;
+        string albumTitle = string.Empty;
 
-        // GET: MessageWidget
+        // GET: SiteForm
         public ActionResult Index()
         {
             return View();
         }
 
-
-
-        //Main function, it handles the submission of form detail .
-
         [HttpPost]
-        public ActionResult SubmitForm(MessageWidgetModel messageWidgetModel, HttpPostedFileBase ItemImage)
+        public ActionResult AddWidget(SiteModel form, HttpPostedFileBase ItemImage)
         {
 
 
+            var multisiteContext = SystemManager.CurrentContext as MultisiteContext;
+
+            var sites = multisiteContext.GetSites();
+            foreach (var site in sites)
+            {
+                if (site.Name == "SiteWidget")
+                {
+                    using (new SiteRegion(site))
+                    {
+                        // Code within the using block
+
+                        GetSite(site);
+
+
+
+                    }
+                }
+
+            }
+
+
+
+
             // here we store the value of Tags
-            string name = messageWidgetModel.Tags;
+            string name = form.Tags;
 
 
             // here we store the value of Category
-            string category = messageWidgetModel.Category;
+            string category = form.Category;
 
 
 
 
             // Get an instance of the DynamicModuleManager to manage dynamic content
-            DynamicModuleManager dynamicModuleManager = DynamicModuleManager.GetManager();
-
-
-            // Resolve the type of the custom dynamic module named "Kanishk"
-            Type kanishkType = TypeResolutionService.ResolveType("Telerik.Sitefinity.DynamicTypes.Model.DynamicModule.Kanishk");
-
-
-            // Create a new data item (content item) of the "Kanishk" dynamic module type
+            DynamicModuleManager dynamicModuleManager = DynamicModuleManager.GetManager(providerName);
+            Type kanishkType = TypeResolutionService.ResolveType("Telerik.Sitefinity.DynamicTypes.Model.SiteModule.Sitemodule");
             DynamicContent kanishkItem = dynamicModuleManager.CreateDataItem(kanishkType);
 
 
 
             // Set the "Title" field of the dynamic content item to the value of messageWidgetModel.Title
 
-            kanishkItem.SetString("Title", messageWidgetModel.Title);
+            kanishkItem.SetString("Title", form.Title);
 
             // Set the "Description" field of the dynamic content item to the value of messageWidgetModel.Description
-            kanishkItem.SetString("Description", messageWidgetModel.Description);
+            kanishkItem.SetString("Description", form.Description);
 
 
 
 
 
-           
+
 
 
 
             // Add Tags Method
             AddTags(name);
 
-            addtaxon(kanishkItem, messageWidgetModel.Tags);
+            addtaxon(kanishkItem, form.Tags);
 
 
             // Add Category Method
@@ -124,25 +134,59 @@ namespace TrialProject.Mvc.Controllers
                 string imageTitle = System.IO.Path.GetFileNameWithoutExtension(imageFileName);
 
                 // call the create image function
-                CreateImageWithNativeAPI(masterImageId, imageFileName, imageExtension, imageTitle, imageStream, albumId , kanishkItem);
+                CreateImageWithNativeAPI(masterImageId, imageFileName, imageExtension, imageTitle, imageStream, albumId, kanishkItem);
 
 
 
             }
 
-
-            // publishing the item into dynamic module records
-            dynamicModuleManager.Lifecycle.Publish(kanishkItem);
+            //publishing the item into dynamic module records
+                dynamicModuleManager.Lifecycle.Publish(kanishkItem);
             kanishkItem.SetWorkflowStatus(dynamicModuleManager.Provider.ApplicationName, "Published");
             dynamicModuleManager.SaveChanges();
 
 
-
-            return View("Index", messageWidgetModel);
-
+            return View("Index", form);
         }
 
-   
+        private IDictionary<string, string[]> GetSite(ISite site)
+        {
+
+
+
+
+
+            var result = new Dictionary<string, string[]>();
+
+            var dynamicModuleNames = ModuleBuilderManager.GetActiveTypes().Select(t => t.ModuleName).Distinct();
+            foreach (var dynamicModuleName in dynamicModuleNames)
+            {
+                var typeProviders = site.GetProviders(dynamicModuleName);
+
+                foreach (var typeProvider in typeProviders)
+                {
+                    providerName = typeProvider.ProviderName;
+                    // Now you have access to the provider name, you can use it as needed
+                    // For example, you can add it to a list, display it, or perform any other operation.
+                }
+
+                //IEnumerable<string> enumerable = typeProviders.Select(t => t.ProviderName);
+
+                //result.Add(dynamicModuleName, typeProviders.Select(p => p.ProviderName).ToArray());
+            }
+
+            return result;
+        }
+
+
+
+
+
+
+
+
+
+
         // Add tag 
         private void AddTags(string name)
         {
@@ -239,7 +283,7 @@ namespace TrialProject.Mvc.Controllers
         {
             //gets an isntance of the LibrariesManager
             var manager = LibrariesManager.GetManager();
-            Album albumManager = manager.GetAlbums().Where(a => a.Title == "ImageAlbumTitle1").FirstOrDefault();
+            Album albumManager = manager.GetAlbums().Where(a => a.Title == "ImageAlbumTitle3").FirstOrDefault();
             //creates an image album(library)
 
             if (albumManager == null)
@@ -247,8 +291,11 @@ namespace TrialProject.Mvc.Controllers
 
 
                 var imagesAlbum = manager.CreateAlbum();
-                imagesAlbum.Title = "ImageAlbumTitle3";
+                imagesAlbum.Title = "ImageAlbumTitle4";
                 manager.SaveChanges();
+
+                CreateAlbumNativeAPI(albumManager);
+
             }
             else
             {
@@ -263,15 +310,15 @@ namespace TrialProject.Mvc.Controllers
 
         private void CreateAlbumNativeAPI(Album imagesAlbum)
         {
-             albumId = imagesAlbum.Id;
-             albumTitle = imagesAlbum.Title;
+            albumId = imagesAlbum.Id;
+            albumTitle = imagesAlbum.Title;
         }
 
 
 
         //Create images
 
-        private void CreateImageWithNativeAPI(Guid masterImageId, string imageFileName, string imageExtension, string imageTitle, Stream imageStream, Guid albumId , DynamicContent kanishkItem)
+        private void CreateImageWithNativeAPI(Guid masterImageId, string imageFileName, string imageExtension, string imageTitle, Stream imageStream, Guid albumId, DynamicContent kanishkItem)
         {
             LibrariesManager librariesManager = LibrariesManager.GetManager();
             Image image = librariesManager.GetImages().Where(i => i.Id == masterImageId).FirstOrDefault();
@@ -315,5 +362,6 @@ namespace TrialProject.Mvc.Controllers
                 }
             }
         }
+
     }
 }
